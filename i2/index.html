@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>IES 3D Lighting Simulation - Pole Scene</title>
+    <link rel="stylesheet" href="css/main.css">
+    <script>
+        window.__appScriptError = null;
+        window.addEventListener('error', function(e) {
+            window.__appScriptError = (e.message || 'Script Error') + ' @ ' + (e.filename || '');
+            var bar = document.getElementById('js-error-bar');
+            if (!bar && document.body) {
+                bar = document.createElement('div');
+                bar.id = 'js-error-bar';
+                bar.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#c0392b;color:#fff;padding:8px 12px;z-index:999999;font-size:12px;line-height:1.4;';
+                document.body.appendChild(bar);
+            }
+            if (bar) {
+                bar.textContent = window.__appScriptError;
+            }
+        });
+
+        window.openPanel = function(panelId) {
+            var panelMap = {
+                'map-panel': 'map-panel-content',
+                'upload-panel': 'upload-panel-content',
+                'lighting-panel': 'lighting-panel-content',
+                'illuminance-panel': 'illuminance-panel-content',
+                'report-panel': 'report-panel-content'
+            };
+            var contentId = panelMap[panelId];
+            if (!contentId) return;
+
+            document.querySelectorAll('.panel-content').forEach(function(el) {
+                el.classList.remove('active');
+            });
+            document.querySelectorAll('#mobile-nav .nav-item').forEach(function(el) {
+                el.classList.remove('active');
+            });
+
+            var panel = document.getElementById(contentId);
+            if (panel) panel.classList.add('active');
+
+            var nav = document.querySelector('#mobile-nav .nav-item[data-panel="' + panelId + '"]');
+            if (nav) nav.classList.add('active');
+
+            if (typeof window.handlePanelOpened === 'function') {
+                try {
+                    window.handlePanelOpened(panelId);
+                } catch (e) {
+                    console.warn('Panel init error:', e.message);
+                }
+            }
+        };
+
+        window.closeAllPanels = function() {
+            document.querySelectorAll('.panel-content').forEach(function(el) {
+                el.classList.remove('active');
+            });
+            document.querySelectorAll('#mobile-nav .nav-item').forEach(function(el) {
+                el.classList.remove('active');
+            });
+        };
+
+        window.resetPanel = function() {};
+
+        window.__navTap = function(panelId, e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            window.openPanel(panelId);
+        };
+    </script>
+</head>
+<body>
+    
+    <div id="company-logo" onclick="showAboutModal(); event.stopPropagation();">
+        <div class="logo-box">
+            <span class="logo-text">www.opensolardesign.com</span>
+        </div>
+    </div>
+    
+    
+    <div id="about-modal" class="modal-overlay">
+        <div class="about-modal-content"> 
+            <div class="about-modal-body" style="text-align: left;">
+                <p>Developing this engineering suite takes dedicated time and effort. Thank you for choosing us. Feedback & Inquiries: sales@opensolardesign.com</p>
+            
+            <button class="about-ok-btn" onclick="closeAboutModal()">Close</button>
+            </div> 
+        </div>
+    </div>
+    
+    <div id="top-info-bar" >
+        <div id="top-info-content"></div>
+    </div>
+
+    
+    <div id="info-panel">
+        <div class="info-grid">
+            <div class="info-row"><span class="info-value" id="manufacturer">-</span><span class="info-label">: Manufacturer</span></div>
+            <div class="info-row"><span class="info-value" id="luminaire">-</span><span class="info-label">: Luminaire</span></div>
+            <div class="info-row"><span class="info-value" id="lamp-type">-</span><span class="info-label">: Lamp Type</span></div>
+            <div class="info-row"><span class="info-value" id="unit">-</span><span class="info-label">: Unit</span></div>
+            <div class="info-row"><span class="info-value" id="lamp-count">-</span><span class="info-label">: Lamps</span></div>
+            <div class="info-row"><span class="info-value" id="lumen">-</span><span class="info-label">: Lumen</span></div>
+            <div class="info-row"><span class="info-value" id="vert-count">-</span><span class="info-label">: Vertical Angles</span></div>
+            <div class="info-row"><span class="info-value" id="horiz-count">-</span><span class="info-label">: Horizontal Angles</span></div>
+            <div class="info-row"><span class="info-value" id="max-intensity">-</span><span class="info-label">: Max Intensity</span></div>
+            <div class="info-row"><span class="info-value" id="intensity-range">-</span><span class="info-label">: Range</span></div>
+        </div>
+    </div>
+
+    
+    
+
+    
+    <div id="controls-panel-left" class="minimized" >
+        <div class="panel-header">
+            <button id="minimize-left-panel" class="minimize-btn" onclick="toggleLeftPanel()">+</button>
+            
+        </div>
+        <div id="controls-panel-content">
+        <div class="control-section">
+            <label class="section-label"></label>
+        </div>
+        <div class="control-item align-row-wrap">
+            
+            <label class="inline-label">
+                <input type="radio" name="view-mode" value="curve" checked> 
+                📈 
+            </label>
+            <label class="inline-label">
+                <input type="radio" name="view-mode" value="particle">
+             ✨ 
+            </label>
+            <label class="inline-label">
+            <input type="radio" name="view-mode" value="surface"> 
+                🌊 
+            </label>
+            <label class="inline-label">
+            <input type="radio" name="view-mode" value="combine">
+                 🔀 
+            </label>
+        </div>
+        <div class="control-item align-row">
+            <span class="label-inline">Opacity:</span>
+            <input type="range" id="map-opacity" min="0" max="1" step="0.1" value="0.3" class="width-80">
+            <span id="opacity-value" class="text-opacity">30%</span>
+            <input type="checkbox" id="show-map" checked class="size-14-height">
+        </div>
+        <div class="control-item">
+            <label>Show Pole: <input type="checkbox" id="show-pole" checked></label>
+        </div>
+        <div class="control-item">
+            <label>Show IES Distribution: <input type="checkbox" id="show-ies" checked></label>
+        </div>
+        <div class="control-item">
+            <label>Show Illuminance: <input type="checkbox" id="show-illuminance" checked></label>
+        </div>
+        <div class="control-section">
+            <label class="section-label"></label>
+        </div>
+        <div class="control-item align-row">
+            <span class="text-small">Show Height: </span>
+            <span id="pole-height-value" class="text-small" style="display: none;">5.0</span>
+            <span class="text-small" style="display: none;">m</span>
+            <input type="checkbox" id="show-pole-ruler" checked class="size-14-height">
+        </div>
+        <div class="control-item text-muted">
+            
+        </div>
+        <div class="control-section">
+            <label class="section-label"></label>
+        </div>
+        
+        <div class="control-section">
+            <label class="section-label"></label>
+        </div>
+        <div class="control-item align-row" style="display: none;">
+            <span class="text-small">Angle</span>
+            <input type="number" id="rotation-input" min="0" max="360" value="90" placeholder="Angle" class="input-small">
+            <button id="confirm-rotation-btn" class="btn-small">Confirm</button>
+        </div>
+        
+        
+        </div> 
+    </div> 
+
+    
+    
+
+    
+    <div id="move-pole-container">
+        <button id="move-pole-btn" class="btn-move-pole">🔄 Move Pole</button>
+        <div id="move-pole-actions">
+            <button id="confirm-move-btn" class="btn-confirm-inline">✓ OK</button>
+            <button id="cancel-move-btn" class="btn-cancel-inline">✕ Cancel</button>
+        </div>
+        <div id="move-pole-status">
+            ✅ Move Mode: Drag pole or map to move
+        </div>
+    </div>
+
+    
+    <div id="floating-move-actions">
+        <button id="rotate-cw-btn">↻ CW</button>
+        <button id="rotate-ccw-btn">↺ CCW</button>
+        <button id="floating-confirm-btn">✓ Confirm</button>
+        <button id="floating-cancel-btn">✕ Cancel</button>
+    </div>
+
+    
+    <div id="map-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🗺️ Map Measurement</h3>
+                <button id="close-modal-btn" class="close-btn">✕</button>
+            </div>
+            <div class="modal-body">
+                <div id="map-canvas-container">
+                    <canvas id="map-canvas"></canvas>
+                    <div id="measurement-hint">Tap or long-press two points on the map to measure distance</div>
+                    <div id="zoom-controls">
+                        <button id="zoom-in-btn">+</button>
+                        <span id="zoom-level">100%</span>
+                        <button id="zoom-out-btn">−</button>
+                        <button id="zoom-reset-btn">⟲</button>
+                    </div>
+                </div>
+                <div class="modal-controls">
+                    <div class="control-row hint-row">
+                        <strong>Steps:</strong><br>
+                        1. Tap or long-press two points on the map to mark distance<br>
+                        2. Enter actual distance<br>
+                        3. Click "Set Scale" button to confirm
+                    </div>
+                    <div class="control-row distance-input-row">
+                        <div class="input-with-unit">
+                            <input type="number" id="modal-actual-distance-m" value="5" min="0.1" max="1000" step="0.1" placeholder="meter">
+                            <span class="input-unit-label">m</span>
+                        </div>
+                        <span class="distance-separator">=</span>
+                        <div class="input-with-unit">
+                            <input type="number" id="modal-actual-distance-ft" value="16.4" min="0.1" max="3280" step="0.1" placeholder="foot">
+                            <span class="input-unit-label">ft</span>
+                        </div>
+                    </div>
+                    <div id="modal-measurement-info"></div>
+                    <div class="control-row">
+                        <button id="modal-set-scale-btn">Set Scale</button>
+                        <button id="modal-cancel-btn">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    
+    <div id="measurement-panel" class="draggable-panel">
+        <h4>📏 Distance Measurement</h4>
+        <div class="control-group">
+            <label>Measurement Mode: <input type="checkbox" id="measurement-mode"></label>
+        </div>
+        <div class="control-group distance-input-row">
+            <div class="input-with-unit">
+                <input type="number" id="actual-distance-m" value="10" min="0.1" max="1000" step="0.1" placeholder="meter">
+                <span class="input-unit-label">m</span>
+            </div>
+            <span class="distance-separator">=</span>
+            <div class="input-with-unit">
+                <input type="number" id="actual-distance-ft" value="32.8" min="0.1" max="3280" step="0.1" placeholder="foot">
+                <span class="input-unit-label">ft</span>
+            </div>
+        </div>
+        <div class="control-group">
+            <button id="set-scale-btn" class="btn-full">Set Scale</button>
+        </div>
+        <div class="control-group">
+            <button id="back-to-3d-btn" class="btn-full-gray">Back to 3D</button>
+        </div>
+        <div class="control-group" id="measurement-info">
+            Current Scale: 1 unit = ?m
+        </div>
+    </div>
+    
+    <div id="loading">
+        <div class="spinner"></div>
+        <div>Parsing IES file...</div>
+    </div>
+
+    
+    <div id="bottom-left-buttons">
+        
+        <button id="global-reset-btn" onclick="resetAllPanels()" title="Reset All"> 
+            🔄 Reset All
+        </button>
+        
+        <button id="refresh-btn" onclick="location.reload()" title="Refresh Page">
+            🔃 Reset All
+        </button>
+    </div>
+
+    
+    <div id="panel-container">
+        
+        <div id="map-panel-content" class="panel-content">
+            
+            <div id="map-upload-area">
+                <div class="control-group">
+                    <input type="file" id="map-file-input" accept="image/*" style="display: none;">
+                    <button id="upload-map-btn">📤 Upload Map</button>
+                    <button id="use-default-map-btn">✅ Use Default Map</button>
+                </div>
+            </div>
+            
+            
+            <div id="map-success-section">
+                <div id="map-file-name">No map uploaded</div>
+            </div>
+            
+            
+            <div class="panel-cancel-container">
+                <button class="btn-panel-cancel" onclick="closeAllPanels()">Cancel</button>
+            </div>
+        </div>
+
+        
+        <div id="upload-panel-content" class="panel-content">
+            
+            <div id="upload-success-section">
+                <div id="current-file-info">
+                    Current File: <span></span>
+                </div>
+                <button id="reupload-btn">Reupload</button>
+            </div>
+            
+            
+            <div id="upload-area">
+                <div class="control-group">
+                    <input type="file" id="file-input" accept=".ies">
+                    <button id="upload-btn">Select IES File</button>
+                    <button id="use-default-ies-btn">Use Default IES</button>
+                </div>
+                
+                
+                <div id="ies-preview-section">
+                    <div class="preview-label">Intensity Preview:</div>
+                    <div class="preview-box">
+                        <canvas id="preview-main" width="200" height="200"></canvas>
+                    </div>
+                    <div id="file-name"></div>
+                </div>
+                
+                <div id="upload-confirm-section">
+                    <button id="confirm-upload-btn" class="btn-confirm btn-upload">📤 Confirm Upload</button>
+                    <button id="cancel-upload-btn">Cancel</button>
+                </div>
+                
+                
+                <div id="upload-countdown">
+                    <div id="countdown-text">Uploading...</div>
+                    <div id="countdown-timer">5</div>
+                </div>
+            </div>
+            
+            
+            <div class="panel-cancel-container">
+                <button class="btn-panel-cancel" onclick="closeAllPanels()">Cancel</button>
+            </div>
+        </div>
+
+        
+        <div id="lighting-panel-content" class="panel-content">
+            
+            <div id="lighting-main-options">
+                <button id="custom-settings-btn">Custom Settings</button>
+                <button id="use-ies-lumen-btn">Default (from IES)</button>
+            </div>
+            
+            
+            <div id="lighting-settings-content">
+                <div class="lighting-section">
+                    <label class="lighting-label">Power Setting</label>
+                    <div class="wattage-input-group">
+                        <input type="number" id="wattage-input" min="1" max="500" value="60" placeholder="Enter wattage">
+                        <span class="wattage-unit">W</span>
+                    </div>
+                    <input type="range" id="wattage-slider" min="1" max="500" value="60" step="1">
+                    <div class="wattage-range">1W - 500W</div>
+                </div>
+                <div class="lighting-section">
+                    <label class="lighting-label">Color Temp
+                    <div class="color-temp-options">
+                        <button class="btn-temp active" data-temp="3000">3000K</button>
+                        <button class="btn-temp" data-temp="4000">4000K</button>
+                        <button class="btn-temp" data-temp="5000">5000K</button>
+                        <button class="btn-temp" data-temp="8000">8000K</button>
+                    </div>
+                </div>
+                <div class="margin-top-15">
+                    <button id="confirm-lighting-btn" class="btn-confirm btn-lighting">💡 Confirm Settings</button>
+                </div>
+            </div>
+            
+            
+            <div class="panel-cancel-container">
+                <button class="btn-panel-cancel" onclick="closeAllPanels()">Cancel</button>
+            </div>
+        </div>
+
+        
+        <div id="illuminance-panel-content" class="panel-content">
+            <div class="illuminance-content">
+                <div class="control-row">
+                    <div class="control-group-inline">
+                        <label>Unit:</label>
+                        <select id="illuminance-unit">
+                            <option value="lux">Lux</option>
+                            <option value="fc" selected>FC</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <div class="control-group-inline">
+                        <label>Grid:</label>
+                        <select id="grid-resolution">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                            <option value="ultra">Ultra</option>
+                            <option value="extreme">Extreme</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <div class="control-group-inline pole-height-row">
+                        <label>Pole Height:</label>
+                        <div class="distance-input-row">
+                            <div class="input-with-unit">
+                                <input type="number" id="pole-height-m" min="0.1" max="100" step="0.1" value="5" placeholder="meter">
+                                <span class="input-unit-label">m</span>
+                            </div>
+                            <span class="distance-separator">=</span>
+                            <div class="input-with-unit">
+                                <input type="number" id="pole-height-ft" min="0.1" max="328" step="0.1" value="16.4" placeholder="foot">
+                                <span class="input-unit-label">ft</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <button id="apply-settings-btn" class="btn-confirm btn-apply">📊 Apply Settings</button>
+                </div>
+            </div>
+            
+            
+            <div class="panel-cancel-container">
+                <button class="btn-panel-cancel" onclick="closeAllPanels()">Cancel</button>
+            </div>
+        </div>
+        
+        
+        <div id="report-panel-content" class="panel-content">
+            <div class="report-content">
+                
+                <div class="report-header">
+                    <h1>📊 IES Illuminance Analysis Report</h1>
+                    <div class="report-date">Generated: <span id="report-date"></span></div>
+                </div>
+                
+                
+                <div class="report-section">
+                    <h2>📋 Product Info</h2>
+                    <div id="product-info-table" class="info-table"></div>
+                </div>
+                
+                
+                <div class="report-section">
+                    <h2>⚙️ Lighting Settings</h2>
+                    <div id="lighting-settings-table" class="info-table"></div>
+                </div>
+                
+                
+                <div class="report-section">
+                    <h2>📈 Illuminance Statistics</h2>
+                    <div class="stats-cards">
+                        <div class="stat-card stat-max">
+                            <div class="stat-label">Max Illuminance</div>
+                            <div class="stat-value" id="stat-max">-</div>
+                            <div class="stat-unit" id="stat-unit-max">lux</div>
+                        </div>
+                        <div class="stat-card stat-min">
+                            <div class="stat-label">Min</div>
+                            <div class="stat-value" id="stat-min">-</div>
+                            <div class="stat-unit" id="stat-unit-min">lux</div>
+                        </div>
+                        <div class="stat-card stat-avg">
+                            <div class="stat-label">Average Illuminance</div>
+                            <div class="stat-value" id="stat-avg">-</div>
+                            <div class="stat-unit" id="stat-unit-avg">lux</div>
+                        </div>
+                    </div>
+                </div>
+                
+                
+                <div class="report-section">
+                    <h2>🎨 Illuminance Legend</h2>
+                    <div id="illuminance-legend-report" class="legend-container"></div>
+                </div>
+                
+                
+                <div class="report-footer">
+                    IES 3D Lighting Simulation System - Professional Analysis Report
+                </div>
+            </div>
+            
+            
+            <div class="panel-cancel-container">
+                <button class="btn-panel-cancel" onclick="closeAllPanels()">Close Report</button>
+            </div>
+        </div>
+    </div>
+
+    
+    <div id="illuminance-info-panel">
+        <div id="illuminance-legend">
+            <div class="legend-title">Illuminance Legend</div>
+            <div class="legend"><div class="legend-color" style="background:#2a2a2a;"></div><div class="legend-text">&lt; 5</div></div>
+            <div class="legend"><div class="legend-color" style="background:#0080ff;"></div><div class="legend-text">5 - 10</div></div>
+            <div class="legend"><div class="legend-color" style="background:#00ffff;"></div><div class="legend-text">10 - 20</div></div>
+            <div class="legend"><div class="legend-color" style="background:#80ff80;"></div><div class="legend-text">20 - 50</div></div>
+            <div class="legend"><div class="legend-color" style="background:#ffff00;"></div><div class="legend-text">50 - 100</div></div>
+            <div class="legend"><div class="legend-color" style="background:#ff8000;"></div><div class="legend-text">&gt; 100</div></div>
+        </div>
+        <div id="illuminance-stats">
+            <div class="stats-title">Statistics</div>
+            <div>Max Illuminance: <span id="max-illuminance" class="stat-value">-</span></div>
+            <div>Min Illuminance: <span id="min-illuminance" class="stat-value">-</span></div>
+            <div>Average Illuminance: <span id="avg-illuminance" class="stat-value">-</span></div>
+        </div>
+    </div>
+
+    <div id="three-container"></div>
+    
+    
+    <div id="loading-overlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <div class="loading-text">Loading IES file...</div>
+        </div>
+    </div>
+
+    
+    <nav id="mobile-nav">
+        <div class="nav-item-wrapper">
+            <button type="button" class="nav-item" data-panel="map-panel" onclick="window.__navTap('map-panel', event)" ontouchend="window.__navTap('map-panel', event)">🗺️<br>Map</button>
+            <button type="button" class="nav-reset-btn" data-panel="map-panel" title="Reset" onclick="window.resetPanel('map-panel')">↺</button>
+        </div>
+        <div class="nav-item-wrapper">
+            <button type="button" class="nav-item" data-panel="upload-panel" onclick="window.__navTap('upload-panel', event)" ontouchend="window.__navTap('upload-panel', event)">📁<br>IES</button>
+            <button type="button" class="nav-reset-btn" data-panel="upload-panel" title="Reset" onclick="window.resetPanel('upload-panel')">↺</button>
+        </div>
+        <div class="nav-item-wrapper">
+            <button type="button" class="nav-item" data-panel="lighting-panel" onclick="window.__navTap('lighting-panel', event)" ontouchend="window.__navTap('lighting-panel', event)">💡<br>Lighting</button>
+            <button type="button" class="nav-reset-btn" data-panel="lighting-panel" title="Reset" onclick="window.resetPanel('lighting-panel')">↺</button>
+        </div>
+        <div class="nav-item-wrapper">
+            <button type="button" class="nav-item" data-panel="illuminance-panel" onclick="window.__navTap('illuminance-panel', event)" ontouchend="window.__navTap('illuminance-panel', event)">📊<br>Analysis</button>
+            <button type="button" class="nav-reset-btn" data-panel="illuminance-panel" title="Reset" onclick="window.resetPanel('illuminance-panel')">↺</button>
+        </div>
+    </nav>
+
+    <div id="map-info-display">
+        <div id="map-info-text"></div>
+    </div>
+
+    
+    <div id="custom-alert-overlay" class="modal-overlay">
+        <div class="custom-alert-content">
+            <div class="custom-alert-icon">✅</div>
+            <div class="custom-alert-message"></div>
+            <button id="custom-alert-confirm-btn" class="btn-confirm">Confirm</button>
+        </div>
+    </div>
+    
+    
+    <div id="custom-confirm-overlay" class="modal-overlay">
+        <div class="custom-confirm-content">
+            <div class="custom-confirm-icon">⚠️</div>
+            <div class="custom-confirm-message"></div>
+            <div class="custom-confirm-buttons">
+                <button id="custom-confirm-cancel-btn" class="btn-cancel">Cancel</button>
+                <button id="custom-confirm-confirm-btn" class="btn-confirm btn-danger">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    
+    <script src="lib/jspdf/jspdf.umd.min.js"></script>
+    <script src="js/vendor/three.min.js"></script>
+    <script>
+        if (typeof THREE === 'undefined') {
+            window.__appScriptError = 'Three.js failed to load. Please ensure js/vendor/three.min.js is packaged in the APP';
+        }
+    </script>
+    <script src="js/vendor/OrbitControls.global.js"></script>
+    <script src="js/ies_render.js"></script>
+    <script src="js/default-map.js"></script>
+    <script src="js/pay.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
